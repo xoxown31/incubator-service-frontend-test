@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getProblem } from '../api/problems'
-import { getPosts, createPost, likePost, addComment } from '../api/board'
+import { getProblem, deleteProblem } from '../api/problems'
+import { getPosts, getPost, createPost, deletePost, likePost, addComment } from '../api/board'
 import { getTemplates, submitAnswer } from '../api/answers'
 import Layout from '../components/Layout'
 
@@ -9,6 +9,8 @@ const CATEGORY_LABEL = { SOLUTION: '풀이', DISCUSSION: '토론', QUESTION: '�
 const POST_CATEGORIES = ['SOLUTION', 'DISCUSSION', 'QUESTION', 'TIP']
 const STATUS_COLOR = { UNSOLVED: 'bg-gray-100 text-gray-600', IN_PROGRESS: 'bg-yellow-100 text-yellow-700', SOLVED: 'bg-green-100 text-green-700' }
 const STATUS_LABEL = { UNSOLVED: '미해결', IN_PROGRESS: '진행중', SOLVED: '해결됨' }
+
+const myUserId = Number(localStorage.getItem('userId'))
 
 function parseSchema(template) {
   if (!template?.schema) return []
@@ -23,11 +25,11 @@ export default function ProblemDetailPage() {
   const [templates, setTemplates] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [postForm, setPostForm] = useState({ title: '', content: '', category: 'DISCUSSION' })
-  // 정답 포함 여부
   const [includeAnswer, setIncludeAnswer] = useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const [answerFields, setAnswerFields] = useState({})
   const [expandedPost, setExpandedPost] = useState(null)
+  const [fullPosts, setFullPosts] = useState({}) // postId -> full post with comments
   const [commentInput, setCommentInput] = useState({})
 
   const loadAll = async () => {
@@ -76,32 +78,77 @@ export default function ProblemDetailPage() {
   }
 
   const handleLike = async (postId) => { await likePost(id, postId); loadAll() }
+
+  const handleDeletePost = async (postId) => {
+    if (!confirm('게시글을 삭제하시겠습니까?')) return
+    await deletePost(id, postId)
+    setExpandedPost(null)
+    loadAll()
+  }
+
+  const handleDeleteProblem = async () => {
+    if (!confirm('문제를 삭제하시겠습니까?')) return
+    await deleteProblem(id)
+    navigate('/problems')
+  }
+
+  const handleExpandPost = async (postId) => {
+    if (expandedPost === postId) {
+      setExpandedPost(null)
+      return
+    }
+    setExpandedPost(postId)
+    if (!fullPosts[postId]) {
+      try {
+        const res = await getPost(id, postId)
+        setFullPosts(prev => ({ ...prev, [postId]: res.data.data }))
+      } catch { /* ignore */ }
+    }
+  }
+
   const handleComment = async (postId) => {
     const content = commentInput[postId]
     if (!content?.trim()) return
     await addComment(id, postId, content)
     setCommentInput(p => ({ ...p, [postId]: '' }))
-    loadAll()
+    // reload full post to get updated comments
+    try {
+      const res = await getPost(id, postId)
+      setFullPosts(prev => ({ ...prev, [postId]: res.data.data }))
+    } catch { /* ignore */ }
   }
 
   if (!problem) return null
 
   const selectedTemplate = templates.find(t => t.id === Number(selectedTemplateId))
   const answerSchemaFields = parseSchema(selectedTemplate)
+  const isOwner = problem.userId === myUserId
 
   return (
     <Layout>
       {/* 문제 정보 */}
       <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-6 shadow-sm">
         <button onClick={() => navigate(-1)} className="text-xs text-gray-400 hover:text-gray-600 mb-3 block">← 돌아가기</button>
-        <div className="flex items-center gap-2 mb-2">
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[problem.status]}`}>
-            {STATUS_LABEL[problem.status]}
-          </span>
-          {problem.isPublic && <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 font-medium">공개</span>}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[problem.status]}`}>
+                {STATUS_LABEL[problem.status]}
+              </span>
+              {problem.isPublic && <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 font-medium">공개</span>}
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-1">{problem.title}</h2>
+            {problem.description && <p className="text-gray-500 text-sm">{problem.description}</p>}
+          </div>
+          {isOwner && (
+            <button
+              onClick={handleDeleteProblem}
+              className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 shrink-0"
+            >
+              삭제
+            </button>
+          )}
         </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-1">{problem.title}</h2>
-        {problem.description && <p className="text-gray-500 text-sm">{problem.description}</p>}
       </div>
 
       {/* 게시글 목록 */}
@@ -189,18 +236,32 @@ export default function ProblemDetailPage() {
         {posts.length === 0 && <div className="text-center py-12 text-gray-400 text-sm">아직 게시글이 없습니다.</div>}
 
         {posts.map(post => {
-          const postAnswer = post.answer
+          const isExpanded = expandedPost === post.id
+          const full = fullPosts[post.id]
+          const displayPost = full || post
+          const postAnswer = displayPost.answer
           const postTemplate = postAnswer ? templates.find(t => t.id === postAnswer.templateId) : null
           const ansFields = parseSchema(postTemplate)
           let parsedAnswerData = {}
           if (postAnswer?.data) try { parsedAnswerData = JSON.parse(postAnswer.data) } catch { /* ignore */ }
+          const isPostOwner = post.userId === myUserId
 
           return (
             <div key={post.id} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium">{CATEGORY_LABEL[post.category]}</span>
-                <span className="text-xs text-gray-400">{post.nickname}</span>
-                <span className="text-xs text-gray-300">조회 {post.viewCount}</span>
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium">{CATEGORY_LABEL[post.category]}</span>
+                  <span className="text-xs text-gray-400">{post.nickname}</span>
+                  <span className="text-xs text-gray-300">조회 {post.viewCount}</span>
+                </div>
+                {isPostOwner && (
+                  <button
+                    onClick={() => handleDeletePost(post.id)}
+                    className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 shrink-0"
+                  >
+                    삭제
+                  </button>
+                )}
               </div>
               <h3 className="font-semibold text-gray-900 mb-1">{post.title}</h3>
               <p className="text-sm text-gray-600">{post.content}</p>
@@ -225,23 +286,32 @@ export default function ProblemDetailPage() {
 
               <div className="flex items-center gap-3 mt-3">
                 <button onClick={() => handleLike(post.id)} className="text-xs text-gray-400 hover:text-indigo-600">
-                  ♥ {post.likeCount}
+                  ♥ {displayPost.likeCount}
                 </button>
                 <button
-                  onClick={() => setExpandedPost(expandedPost === post.id ? null : post.id)}
+                  onClick={() => handleExpandPost(post.id)}
                   className="text-xs text-gray-400 hover:text-indigo-600"
                 >
-                  댓글 {post.comments?.length || 0}
+                  댓글 {isExpanded && full ? full.comments?.length || 0 : post.comments?.length || 0}
                 </button>
               </div>
 
-              {expandedPost === post.id && (
+              {isExpanded && (
                 <div className="mt-3 pt-3 border-t border-gray-100">
-                  {(post.comments || []).map(c => (
-                    <div key={c.id} className="text-sm text-gray-600 py-1.5 border-b border-gray-50 last:border-0">
-                      <span className="font-medium text-gray-700 mr-2">{c.nickname}</span>{c.content}
-                    </div>
-                  ))}
+                  {full ? (
+                    <>
+                      {(full.comments || []).length === 0 && (
+                        <p className="text-xs text-gray-400 py-2">첫 댓글을 남겨보세요.</p>
+                      )}
+                      {(full.comments || []).map(c => (
+                        <div key={c.id} className="text-sm text-gray-600 py-1.5 border-b border-gray-50 last:border-0">
+                          <span className="font-medium text-gray-700 mr-2">{c.nickname}</span>{c.content}
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <p className="text-xs text-gray-400 py-2">불러오는 중...</p>
+                  )}
                   <div className="flex gap-2 mt-2">
                     <input
                       value={commentInput[post.id] || ''}

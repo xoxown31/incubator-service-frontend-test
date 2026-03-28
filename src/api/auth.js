@@ -7,6 +7,8 @@ export const login = async (email, password) => {
   const { data } = await client.post('/api/v1/auth/login', { email, password })
   localStorage.setItem('accessToken', data.data.accessToken)
   localStorage.setItem('refreshToken', data.data.refreshToken)
+  localStorage.setItem('userId', String(data.data.userId))
+  localStorage.setItem('nickname', data.data.nickname)
   return data.data
 }
 
