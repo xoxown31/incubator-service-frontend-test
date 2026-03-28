@@ -58,7 +58,10 @@ export default function HomePage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
         <h1 className="text-xl font-bold text-indigo-600">Incubator</h1>
-        <button onClick={handleLogout} className="text-sm text-gray-500 hover:text-gray-700">로그아웃</button>
+        <div className="flex items-center gap-4">
+          <button onClick={() => navigate('/community')} className="text-sm text-gray-500 hover:text-gray-700">커뮤니티</button>
+          <button onClick={handleLogout} className="text-sm text-gray-500 hover:text-gray-700">로그아웃</button>
+        </div>
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-8">

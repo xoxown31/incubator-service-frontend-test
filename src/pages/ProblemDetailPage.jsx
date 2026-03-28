@@ -7,6 +7,98 @@ import { getAnswers, getTemplates, submitAnswer } from '../api/answers'
 const CATEGORY_LABEL = { SOLUTION: '풀이', DISCUSSION: '토론', QUESTION: '질문', TIP: '팁' }
 const POST_CATEGORIES = ['SOLUTION', 'DISCUSSION', 'QUESTION', 'TIP']
 
+function parseSchema(template) {
+  if (!template?.schema) return []
+  try {
+    return JSON.parse(template.schema).fields ?? []
+  } catch {
+    return []
+  }
+}
+
+function DynamicAnswerForm({ templates, onSubmit, onCancel }) {
+  const [templateId, setTemplateId] = useState(templates[0]?.id ?? '')
+  const [fieldValues, setFieldValues] = useState({})
+
+  const selectedTemplate = templates.find(t => t.id === Number(templateId))
+  const fields = parseSchema(selectedTemplate)
+
+  const handleTemplateChange = (id) => {
+    setTemplateId(id)
+    setFieldValues({})
+  }
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    const data = JSON.stringify(
+      Object.fromEntries(fields.map(f => [f.key, fieldValues[f.key] ?? '']))
+    )
+    onSubmit(Number(templateId), data)
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <select
+          value={templateId}
+          onChange={e => handleTemplateChange(e.target.value)}
+          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+
+        {selectedTemplate?.description && (
+          <p className="text-xs text-gray-400">{selectedTemplate.description}</p>
+        )}
+
+        {fields.map(f => (
+          <div key={f.key}>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}</label>
+            <textarea
+              value={fieldValues[f.key] ?? ''}
+              onChange={e => setFieldValues(v => ({ ...v, [f.key]: e.target.value }))}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+              rows={3}
+              required
+            />
+          </div>
+        ))}
+
+        <div className="flex gap-2">
+          <button type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-lg text-sm font-medium">제출</button>
+          <button type="button" onClick={onCancel} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg text-sm font-medium">취소</button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+function AnswerCard({ answer, templates }) {
+  const template = templates.find(t => t.id === answer.templateId)
+  const fields = parseSchema(template)
+
+  let parsed = {}
+  try { parsed = JSON.parse(answer.data) } catch { /* raw fallback */ }
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-medium">{answer.templateName}</span>
+        <span className="text-xs text-gray-400">{answer.userNickname}</span>
+      </div>
+      {fields.length > 0
+        ? fields.map(f => (
+          <div key={f.key} className="mb-3 last:mb-0">
+            <p className="text-xs font-medium text-gray-500 mb-1">{f.label}</p>
+            <p className="text-sm text-gray-800 whitespace-pre-wrap">{parsed[f.key] ?? ''}</p>
+          </div>
+        ))
+        : <pre className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 rounded-lg p-3">{answer.data}</pre>
+      }
+    </div>
+  )
+}
+
 export default function ProblemDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -18,13 +110,10 @@ export default function ProblemDetailPage() {
   const [showPostForm, setShowPostForm] = useState(false)
   const [showAnswerForm, setShowAnswerForm] = useState(false)
   const [postForm, setPostForm] = useState({ title: '', content: '', category: 'DISCUSSION' })
-  const [answerForm, setAnswerForm] = useState({ templateId: '', data: '' })
   const [expandedPost, setExpandedPost] = useState(null)
   const [commentInput, setCommentInput] = useState({})
 
-  useEffect(() => {
-    loadAll()
-  }, [id])
+  useEffect(() => { loadAll() }, [id])
 
   const loadAll = async () => {
     try {
@@ -38,9 +127,6 @@ export default function ProblemDetailPage() {
       setPosts(postsRes.data.data.content || [])
       setAnswers(answersRes.data.data.content || [])
       setTemplates(templatesRes.data.data || [])
-      if (templatesRes.data.data?.length > 0) {
-        setAnswerForm(f => ({ ...f, templateId: templatesRes.data.data[0].id }))
-      }
     } catch {
       navigate('/login')
     }
@@ -54,11 +140,9 @@ export default function ProblemDetailPage() {
     loadAll()
   }
 
-  const handleSubmitAnswer = async (e) => {
-    e.preventDefault()
-    await submitAnswer(id, Number(answerForm.templateId), answerForm.data)
+  const handleSubmitAnswer = async (templateId, data) => {
+    await submitAnswer(id, templateId, data)
     setShowAnswerForm(false)
-    setAnswerForm(f => ({ ...f, data: '' }))
     loadAll()
   }
 
@@ -83,12 +167,11 @@ export default function ProblemDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center gap-4">
-        <button onClick={() => navigate('/')} className="text-gray-400 hover:text-gray-600 text-sm">← 돌아가기</button>
+        <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-gray-600 text-sm">← 돌아가기</button>
         <h1 className="text-xl font-bold text-indigo-600">Incubator</h1>
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-8">
-        {/* Problem card */}
         <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-6 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[problem.status]}`}>
@@ -100,7 +183,6 @@ export default function ProblemDetailPage() {
           {problem.description && <p className="text-gray-600 text-sm">{problem.description}</p>}
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6">
           <button
             onClick={() => setTab('posts')}
@@ -116,7 +198,6 @@ export default function ProblemDetailPage() {
           </button>
         </div>
 
-        {/* Posts tab */}
         {tab === 'posts' && (
           <div className="space-y-4">
             <div className="flex justify-end">
@@ -169,7 +250,7 @@ export default function ProblemDetailPage() {
                 <h3 className="font-semibold text-gray-900 mb-1">{post.title}</h3>
                 <p className="text-sm text-gray-600 mb-3">{post.content}</p>
                 <div className="flex items-center gap-3">
-                  <button onClick={() => handleLike(post.id)} className="text-xs text-gray-500 hover:text-indigo-600 flex items-center gap-1">
+                  <button onClick={() => handleLike(post.id)} className="text-xs text-gray-500 hover:text-indigo-600">
                     ♥ {post.likeCount}
                   </button>
                   <button
@@ -204,7 +285,6 @@ export default function ProblemDetailPage() {
           </div>
         )}
 
-        {/* Answers tab */}
         {tab === 'answers' && (
           <div className="space-y-4">
             <div className="flex justify-end">
@@ -214,52 +294,18 @@ export default function ProblemDetailPage() {
             </div>
 
             {showAnswerForm && (
-              <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-                <form onSubmit={handleSubmitAnswer} className="space-y-3">
-                  {templates.length === 0
-                    ? <p className="text-sm text-gray-400">등록된 양식이 없습니다.</p>
-                    : (
-                      <>
-                        <select
-                          value={answerForm.templateId}
-                          onChange={e => setAnswerForm(p => ({ ...p, templateId: e.target.value }))}
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        >
-                          {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                        </select>
-                        {answerForm.templateId && (
-                          <p className="text-xs text-gray-400">
-                            {templates.find(t => t.id === Number(answerForm.templateId))?.description}
-                          </p>
-                        )}
-                        <textarea
-                          placeholder="답변 내용 (JSON 형식)"
-                          value={answerForm.data}
-                          onChange={e => setAnswerForm(p => ({ ...p, data: e.target.value }))}
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none font-mono"
-                          rows={6}
-                          required
-                        />
-                        <div className="flex gap-2">
-                          <button type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-lg text-sm font-medium">제출</button>
-                          <button type="button" onClick={() => setShowAnswerForm(false)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg text-sm font-medium">취소</button>
-                        </div>
-                      </>
-                    )
-                  }
-                </form>
-              </div>
+              templates.length === 0
+                ? <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm text-sm text-gray-400">등록된 양식이 없습니다.</div>
+                : <DynamicAnswerForm
+                    templates={templates}
+                    onSubmit={handleSubmitAnswer}
+                    onCancel={() => setShowAnswerForm(false)}
+                  />
             )}
 
             {answers.length === 0 && <div className="text-center py-12 text-gray-400 text-sm">아직 공유된 정답이 없습니다.</div>}
             {answers.map(a => (
-              <div key={a.id} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-medium">{a.templateName}</span>
-                  <span className="text-xs text-gray-400">{a.userNickname}</span>
-                </div>
-                <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-50 rounded-lg p-3">{a.data}</pre>
-              </div>
+              <AnswerCard key={a.id} answer={a} templates={templates} />
             ))}
           </div>
         )}
