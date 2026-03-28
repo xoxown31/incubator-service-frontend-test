@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { submitRecord, getLeaderboard } from '../api/minigame'
+import Layout from '../components/Layout'
 
 const TEXTS = [
   "문제를 오래 붙잡고 있으면 오히려 해결이 멀어질 수 있다. 잠깐 내려놓고 다른 일을 하다 보면 뜻밖의 답이 떠오른다.",
@@ -113,17 +114,8 @@ export default function MinigamePage() {
   const timerColor = timeLeft <= 10 ? 'text-red-500' : 'text-indigo-600'
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/')} className="text-indigo-600 font-bold text-xl">Incubator</button>
-          <span className="text-gray-300">|</span>
-          <span className="text-sm font-medium text-gray-700">타자 게임</span>
-        </div>
-        <button onClick={() => navigate('/')} className="text-sm text-gray-500 hover:text-gray-700">내 문제</button>
-      </header>
-
-      <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+    <Layout>
+      <div className="space-y-6">
 
         {/* 게임 영역 */}
         <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
@@ -210,7 +202,7 @@ export default function MinigamePage() {
             )
           }
         </div>
-      </main>
-    </div>
+      </div>
+    </Layout>
   )
 }

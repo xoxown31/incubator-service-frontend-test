@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getPublicProblems } from '../api/community'
+import Layout from '../components/Layout'
 
 const CATEGORY_LABEL = { DAILY: '일상', WORK: '업무', STUDY: '학습', CREATIVE: '창의', OTHER: '기타' }
 const STATUS_LABEL = { UNSOLVED: '미해결', IN_PROGRESS: '진행중', SOLVED: '해결됨' }
@@ -43,17 +44,8 @@ export default function CommunityPage() {
   const fmt = (dt) => new Date(dt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/')} className="text-indigo-600 font-bold text-xl">Incubator</button>
-          <span className="text-gray-300">|</span>
-          <span className="text-sm font-medium text-gray-700">커뮤니티</span>
-        </div>
-        <button onClick={() => navigate('/')} className="text-sm text-gray-500 hover:text-gray-700">내 문제</button>
-      </header>
-
-      <main className="max-w-2xl mx-auto px-4 py-8">
+    <Layout>
+      <div>
         <form onSubmit={handleSearch} className="flex gap-2 mb-6">
           <input
             type="text"
@@ -121,7 +113,7 @@ export default function CommunityPage() {
             </button>
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </Layout>
   )
 }
