@@ -6,6 +6,7 @@ import ProblemsPage from './pages/ProblemsPage'
 import ProblemDetailPage from './pages/ProblemDetailPage'
 import CommunityPage from './pages/CommunityPage'
 import MinigamePage from './pages/MinigamePage'
+import PostDetailPage from './pages/PostDetailPage'
 
 function PrivateRoute({ children }) {
   return localStorage.getItem('accessToken') ? children : <Navigate to="/login" replace />
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/" element={<PrivateRoute><HomePage /></PrivateRoute>} />
         <Route path="/problems/:id" element={<PrivateRoute><ProblemDetailPage /></PrivateRoute>} />
+        <Route path="/problems/:id/posts/:postId" element={<PrivateRoute><PostDetailPage /></PrivateRoute>} />
         <Route path="/problems" element={<PrivateRoute><ProblemsPage /></PrivateRoute>} />
         <Route path="/community" element={<PrivateRoute><CommunityPage /></PrivateRoute>} />
         <Route path="/minigame" element={<PrivateRoute><MinigamePage /></PrivateRoute>} />
