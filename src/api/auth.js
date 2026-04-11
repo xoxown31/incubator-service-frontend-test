@@ -9,6 +9,7 @@ export const login = async (email, password) => {
   localStorage.setItem('refreshToken', data.data.refreshToken)
   localStorage.setItem('userId', String(data.data.userId))
   localStorage.setItem('nickname', data.data.nickname)
+  localStorage.setItem('role', data.data.role || 'USER')
   return data.data
 }
 

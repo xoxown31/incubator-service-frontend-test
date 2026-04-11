@@ -11,6 +11,7 @@ const NAV = [
 export default function Layout({ children }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const isAdmin = localStorage.getItem('role') === 'ADMIN'
 
   const handleLogout = async () => {
     await logout()
@@ -41,9 +42,19 @@ export default function Layout({ children }) {
               ))}
             </nav>
           </div>
-          <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-gray-600">
-            로그아웃
-          </button>
+          <div className="flex items-center gap-3">
+            {isAdmin && (
+              <button
+                onClick={() => navigate('/admin')}
+                className="text-xs px-2 py-1 rounded bg-indigo-50 text-indigo-600 font-medium hover:bg-indigo-100"
+              >
+                관리자
+              </button>
+            )}
+            <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-gray-600">
+              로그아웃
+            </button>
+          </div>
         </div>
       </header>
 

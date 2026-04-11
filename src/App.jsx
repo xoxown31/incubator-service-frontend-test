@@ -7,9 +7,22 @@ import ProblemDetailPage from './pages/ProblemDetailPage'
 import CommunityPage from './pages/CommunityPage'
 import MinigamePage from './pages/MinigamePage'
 import PostDetailPage from './pages/PostDetailPage'
+import AdminDashboardPage from './pages/admin/AdminDashboardPage'
+import AdminUsersPage from './pages/admin/AdminUsersPage'
+import AdminProblemsPage from './pages/admin/AdminProblemsPage'
+import AdminPostsPage from './pages/admin/AdminPostsPage'
+import AdminTemplatesPage from './pages/admin/AdminTemplatesPage'
 
 function PrivateRoute({ children }) {
   return localStorage.getItem('accessToken') ? children : <Navigate to="/login" replace />
+}
+
+function AdminRoute({ children }) {
+  const token = localStorage.getItem('accessToken')
+  const role  = localStorage.getItem('role')
+  if (!token) return <Navigate to="/login" replace />
+  if (role !== 'ADMIN') return <Navigate to="/" replace />
+  return children
 }
 
 export default function App() {
@@ -24,6 +37,13 @@ export default function App() {
         <Route path="/problems" element={<PrivateRoute><ProblemsPage /></PrivateRoute>} />
         <Route path="/community" element={<PrivateRoute><CommunityPage /></PrivateRoute>} />
         <Route path="/minigame" element={<PrivateRoute><MinigamePage /></PrivateRoute>} />
+
+        {/* Admin */}
+        <Route path="/admin"                  element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
+        <Route path="/admin/users"            element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
+        <Route path="/admin/problems"         element={<AdminRoute><AdminProblemsPage /></AdminRoute>} />
+        <Route path="/admin/posts"            element={<AdminRoute><AdminPostsPage /></AdminRoute>} />
+        <Route path="/admin/answer-templates" element={<AdminRoute><AdminTemplatesPage /></AdminRoute>} />
       </Routes>
     </BrowserRouter>
   )
