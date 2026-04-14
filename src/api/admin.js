@@ -82,3 +82,23 @@ export const updateTemplate = async (id, payload) => {
 export const deleteTemplate = async (id) => {
   await client.delete(`/api/v1/admin/answer-templates/${id}`)
 }
+
+// ────────── MiniGames ──────────
+export const fetchMiniGames = async () => {
+  const { data } = await client.get('/api/v1/admin/minigames')
+  return data.data
+}
+
+export const createMiniGame = async (payload) => {
+  const { data } = await client.post('/api/v1/admin/minigames', payload)
+  return data.data
+}
+
+export const updateMiniGame = async (id, payload) => {
+  const { data } = await client.put(`/api/v1/admin/minigames/${id}`, payload)
+  return data.data
+}
+
+export const deleteMiniGame = async (id) => {
+  await client.delete(`/api/v1/admin/minigames/${id}`)
+}
