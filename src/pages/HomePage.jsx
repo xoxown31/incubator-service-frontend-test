@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getMyProblems } from '../api/problems'
+import { getMyProblems, getRecommendedProblems } from '../api/problems'
 import Layout from '../components/Layout'
 
 const STATUS_LABEL = { UNSOLVED: '미해결', IN_PROGRESS: '진행중', SOLVED: '해결됨' }
@@ -9,13 +9,16 @@ const STATUS_COLOR = {
   IN_PROGRESS: 'text-yellow-600',
   SOLVED: 'text-green-600',
 }
+const CATEGORY_LABEL = { DAILY: '일상', WORK: '업무', STUDY: '학습', CREATIVE: '창의', OTHER: '기타' }
 
 export default function HomePage() {
   const navigate = useNavigate()
   const [problems, setProblems] = useState([])
+  const [recommended, setRecommended] = useState([])
 
   useEffect(() => {
     getMyProblems().then(r => setProblems(r.data.data)).catch(() => navigate('/login'))
+    getRecommendedProblems().then(r => setRecommended(r.data.data || [])).catch(() => {})
   }, [])
 
   const counts = {
@@ -62,6 +65,31 @@ export default function HomePage() {
             </button>
           ))}
         </div>
+
+        {/* 추천 문제 */}
+        {recommended.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-gray-900">✨ 추천 문제</h2>
+              <span className="text-xs text-gray-400">내 카테고리 기반 이번주 인기</span>
+            </div>
+            <div className="space-y-2">
+              {recommended.slice(0, 5).map(p => (
+                <div
+                  key={p.id}
+                  onClick={() => navigate(`/problems/${p.id}`)}
+                  className="bg-white rounded-2xl border border-gray-100 px-4 py-3 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow cursor-pointer"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs text-gray-400 shrink-0">{CATEGORY_LABEL[p.category]}</span>
+                    <span className="text-sm font-medium text-gray-800 truncate">{p.title}</span>
+                  </div>
+                  <span className="text-xs text-gray-300 shrink-0 ml-2">→</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 최근 문제 */}
         <div>
