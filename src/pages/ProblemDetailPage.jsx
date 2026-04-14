@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getProblem, deleteProblem } from '../api/problems'
+import { getProblem, deleteProblem, getProblemComments, addProblemComment, deleteProblemComment } from '../api/problems'
 import { getPosts, createPost, likePost } from '../api/board'
 import { getTemplates, submitAnswer } from '../api/answers'
 import Layout from '../components/Layout'
@@ -29,6 +29,14 @@ export default function ProblemDetailPage() {
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const [answerFields, setAnswerFields] = useState({})
 
+  // 힌트
+  const [showHint, setShowHint] = useState(false)
+
+  // 문제 댓글
+  const [comments, setComments] = useState([])
+  const [commentInput, setCommentInput] = useState('')
+  const [showComments, setShowComments] = useState(false)
+
   const loadAll = async () => {
     try {
       const [probRes, postsRes, templatesRes] = await Promise.all([
@@ -46,7 +54,15 @@ export default function ProblemDetailPage() {
     }
   }
 
+  const loadComments = async () => {
+    try {
+      const { data } = await getProblemComments(id)
+      setComments(data.data || [])
+    } catch { /* ignore */ }
+  }
+
   useEffect(() => { loadAll() }, [id])
+  useEffect(() => { if (showComments) loadComments() }, [showComments])
 
   const handleTemplateChange = (tid) => {
     setSelectedTemplateId(tid)
@@ -56,7 +72,6 @@ export default function ProblemDetailPage() {
   const handleCreatePost = async (e) => {
     e.preventDefault()
     let answerId = null
-
     if (includeAnswer && selectedTemplateId) {
       const fields = parseSchema(templates.find(t => t.id === Number(selectedTemplateId)))
       const data = JSON.stringify(Object.fromEntries(fields.map(f => [f.key, answerFields[f.key] ?? ''])))
@@ -65,7 +80,6 @@ export default function ProblemDetailPage() {
         answerId = res.data.data.id
       } catch { /* ignore */ }
     }
-
     await createPost(id, { ...postForm, answerId })
     setShowForm(false)
     setPostForm({ title: '', content: '', category: 'DISCUSSION' })
@@ -86,6 +100,19 @@ export default function ProblemDetailPage() {
     navigate('/problems')
   }
 
+  const handleAddComment = async (e) => {
+    e.preventDefault()
+    if (!commentInput.trim()) return
+    await addProblemComment(id, commentInput.trim())
+    setCommentInput('')
+    loadComments()
+  }
+
+  const handleDeleteComment = async (commentId) => {
+    await deleteProblemComment(commentId)
+    loadComments()
+  }
+
   if (!problem) return null
 
   const selectedTemplate = templates.find(t => t.id === Number(selectedTemplateId))
@@ -95,7 +122,7 @@ export default function ProblemDetailPage() {
   return (
     <Layout>
       {/* 문제 정보 */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-6 shadow-sm">
+      <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-4 shadow-sm">
         <button onClick={() => navigate(-1)} className="text-xs text-gray-400 hover:text-gray-600 mb-3 block">← 돌아가기</button>
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
@@ -114,6 +141,68 @@ export default function ProblemDetailPage() {
             </button>
           )}
         </div>
+
+        {/* 힌트 */}
+        {problem.hint && (
+          <div className="mt-4 border-t border-gray-50 pt-4">
+            <button
+              onClick={() => setShowHint(v => !v)}
+              className="text-xs text-amber-600 font-medium hover:text-amber-700 flex items-center gap-1"
+            >
+              💡 {showHint ? '힌트 숨기기' : '힌트 보기'}
+            </button>
+            {showHint && (
+              <p className="mt-2 text-sm text-amber-700 bg-amber-50 rounded-xl px-4 py-3 leading-relaxed">
+                {problem.hint}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* 문제 댓글 토글 */}
+        <div className="mt-4 border-t border-gray-50 pt-4">
+          <button
+            onClick={() => setShowComments(v => !v)}
+            className="text-xs text-gray-500 font-medium hover:text-gray-700 flex items-center gap-1"
+          >
+            💬 문제 댓글 {showComments ? '숨기기' : '보기'} ({comments.length})
+          </button>
+
+          {showComments && (
+            <div className="mt-3 space-y-3">
+              {comments.length === 0 && (
+                <p className="text-xs text-gray-400 text-center py-2">아직 댓글이 없습니다.</p>
+              )}
+              {comments.map(c => (
+                <div key={c.id} className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="text-xs font-medium text-gray-700">{c.nickname}</span>
+                    <p className="text-sm text-gray-600 mt-0.5">{c.content}</p>
+                  </div>
+                  {c.userId === myUserId && (
+                    <button
+                      onClick={() => handleDeleteComment(c.id)}
+                      className="text-xs text-red-400 hover:text-red-600 shrink-0"
+                    >
+                      삭제
+                    </button>
+                  )}
+                </div>
+              ))}
+              <form onSubmit={handleAddComment} className="flex gap-2 pt-1">
+                <input
+                  value={commentInput}
+                  onChange={e => setCommentInput(e.target.value)}
+                  placeholder="댓글 입력..."
+                  className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-xs font-medium">
+                  등록
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 게시글 목록 */}
@@ -125,7 +214,6 @@ export default function ProblemDetailPage() {
           </button>
         </div>
 
-        {/* 글쓰기 폼 */}
         {showForm && (
           <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
             <form onSubmit={handleCreatePost} className="space-y-3">
@@ -146,19 +234,15 @@ export default function ProblemDetailPage() {
                 onChange={e => setPostForm(p => ({ ...p, content: e.target.value }))}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
               />
-
               {templates.length > 0 && (
                 <div className="border border-gray-100 rounded-xl p-4 bg-gray-50 space-y-3">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox" checked={includeAnswer}
+                    <input type="checkbox" checked={includeAnswer}
                       onChange={e => setIncludeAnswer(e.target.checked)}
                       className="w-4 h-4 accent-indigo-600"
                     />
                     <span className="text-sm font-medium text-gray-700">정답 양식으로 작성</span>
-                    <span className="text-xs text-gray-400">선택한 양식에 맞춰 정답을 함께 남길 수 있습니다</span>
                   </label>
-
                   {includeAnswer && (
                     <div className="space-y-3">
                       <select
@@ -183,7 +267,6 @@ export default function ProblemDetailPage() {
                   )}
                 </div>
               )}
-
               <div className="flex gap-2">
                 <button type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-lg text-sm font-medium">등록</button>
                 <button type="button" onClick={() => setShowForm(false)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg text-sm font-medium">취소</button>
