@@ -13,7 +13,7 @@ const STATUS_COLOR = {
   SOLVED: 'bg-green-100 text-green-700',
 }
 
-const EMPTY_FORM = { title: '', description: '', hint: '', category: 'DAILY', isPublic: false, defaultTemplateId: '' }
+const EMPTY_FORM = { title: '', description: '', hint: '', realAnswer: '', category: 'DAILY', isPublic: false, defaultTemplateId: '' }
 
 export default function ProblemsPage() {
   const navigate = useNavigate()
@@ -103,6 +103,11 @@ export default function ProblemsPage() {
                 type="text" placeholder="힌트 — '~~~~이지 않을까요?' (선택)" value={form.hint}
                 onChange={e => setForm(p => ({ ...p, hint: e.target.value }))}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <textarea
+                placeholder="실제 정답 (선택 — 어드민만 볼 수 있음)" value={form.realAnswer} rows={2}
+                onChange={e => setForm(p => ({ ...p, realAnswer: e.target.value }))}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
               />
               <div className="flex gap-3 flex-wrap">
                 <select
