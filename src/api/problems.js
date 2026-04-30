@@ -29,3 +29,9 @@ export const addProblemComment = (problemId, content) =>
 
 export const deleteProblemComment = (commentId) =>
   client.delete(`/api/v1/problems/comments/${commentId}`)
+
+export const toggleProblemLike = (problemId) =>
+  client.post(`/api/v1/problems/${problemId}/like`)
+
+export const toggleProblemCommentLike = (commentId) =>
+  client.post(`/api/v1/problems/comments/${commentId}/like`)

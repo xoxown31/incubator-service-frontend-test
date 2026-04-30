@@ -17,3 +17,9 @@ export const likePost = (problemId, postId) =>
 
 export const addComment = (problemId, postId, content) =>
   client.post(`/api/v1/problems/${problemId}/posts/${postId}/comments`, { content })
+
+export const deleteComment = (problemId, postId, commentId) =>
+  client.delete(`/api/v1/problems/${problemId}/posts/${postId}/comments/${commentId}`)
+
+export const likeComment = (problemId, postId, commentId) =>
+  client.post(`/api/v1/problems/${problemId}/posts/${postId}/comments/${commentId}/like`)
