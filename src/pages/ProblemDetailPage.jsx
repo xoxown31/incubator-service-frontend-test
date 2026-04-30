@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getProblem, deleteProblem, getProblemComments, addProblemComment, deleteProblemComment } from '../api/problems'
+import { getProblem, deleteProblem, getProblemComments, addProblemComment, deleteProblemComment, toggleProblemLike, toggleProblemCommentLike } from '../api/problems'
 import { getPosts, createPost, likePost } from '../api/board'
 import { getTemplates, submitAnswer } from '../api/answers'
 import Layout from '../components/Layout'
@@ -94,6 +94,16 @@ export default function ProblemDetailPage() {
     loadAll()
   }
 
+  const handleLikeProblem = async () => {
+    await toggleProblemLike(id)
+    loadAll()
+  }
+
+  const handleLikeComment = async (commentId) => {
+    await toggleProblemCommentLike(commentId)
+    loadComments()
+  }
+
   const handleDeleteProblem = async () => {
     if (!confirm('문제를 삭제하시겠습니까?')) return
     await deleteProblem(id)
@@ -159,8 +169,18 @@ export default function ProblemDetailPage() {
           </div>
         )}
 
+        {/* 문제 좋아요 */}
+        <div className="mt-4 border-t border-gray-50 pt-4 flex items-center gap-4">
+          <button
+            onClick={handleLikeProblem}
+            className={`text-sm font-medium transition-colors flex items-center gap-1 ${problem.isLiked ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-600'}`}
+          >
+            ♥ {problem.likeCount ?? 0}
+          </button>
+        </div>
+
         {/* 문제 댓글 토글 */}
-        <div className="mt-4 border-t border-gray-50 pt-4">
+        <div className="mt-3 border-t border-gray-50 pt-4">
           <button
             onClick={() => setShowComments(v => !v)}
             className="text-xs text-gray-500 font-medium hover:text-gray-700 flex items-center gap-1"
@@ -175,18 +195,26 @@ export default function ProblemDetailPage() {
               )}
               {comments.map(c => (
                 <div key={c.id} className="flex items-start justify-between gap-2">
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <span className="text-xs font-medium text-gray-700">{c.nickname}</span>
                     <p className="text-sm text-gray-600 mt-0.5">{c.content}</p>
                   </div>
-                  {c.userId === myUserId && (
+                  <div className="flex items-center gap-2 shrink-0">
                     <button
-                      onClick={() => handleDeleteComment(c.id)}
-                      className="text-xs text-red-400 hover:text-red-600 shrink-0"
+                      onClick={() => handleLikeComment(c.id)}
+                      className={`text-xs font-medium transition-colors ${c.isLiked ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-600'}`}
                     >
-                      삭제
+                      ♥ {c.likeCount ?? 0}
                     </button>
-                  )}
+                    {c.userId === myUserId && (
+                      <button
+                        onClick={() => handleDeleteComment(c.id)}
+                        className="text-xs text-red-400 hover:text-red-600"
+                      >
+                        삭제
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
               <form onSubmit={handleAddComment} className="flex gap-2 pt-1">
