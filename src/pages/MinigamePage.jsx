@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { getGames, submitRecord, getLeaderboard, getTodayScore } from '../api/minigame'
+import { getGames, submitRecord, getLeaderboard, getTodayScore, getMyRecords } from '../api/minigame'
 import Layout from '../components/Layout'
 
 const TEXTS = [
@@ -16,6 +16,8 @@ const DIFFICULTY_COLOR = { EASY: 'text-green-600 bg-green-50', NORMAL: 'text-yel
 
 export default function MinigamePage() {
   const [games, setGames] = useState([])
+  const [myRecords, setMyRecords] = useState([])
+  const [showMyRecords, setShowMyRecords] = useState(false)
   const [selectedGame, setSelectedGame] = useState(null)
   const [phase, setPhase] = useState('select') // select | ready | playing | result
   const [text, setText] = useState('')
@@ -35,6 +37,7 @@ export default function MinigamePage() {
       setGames(list)
     }).catch(() => {})
     getTodayScore().then(r => setTodayScore(r.data.data || 0)).catch(() => {})
+    getMyRecords().then(r => setMyRecords(r.data.data || [])).catch(() => {})
   }, [])
 
   const selectGame = (game) => {
@@ -124,8 +127,44 @@ export default function MinigamePage() {
         {/* 오늘의 점수 */}
         <div className="bg-indigo-50 rounded-2xl px-5 py-3 flex items-center justify-between">
           <span className="text-sm font-medium text-indigo-700">오늘의 점수</span>
-          <span className="text-2xl font-bold text-indigo-600">{todayScore}</span>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl font-bold text-indigo-600">{todayScore}</span>
+            <button
+              onClick={() => setShowMyRecords(v => !v)}
+              className="text-xs text-indigo-500 hover:text-indigo-700 font-medium"
+            >
+              {showMyRecords ? '내 기록 닫기' : '내 기록 보기'}
+            </button>
+          </div>
         </div>
+
+        {/* 내 기록 */}
+        {showMyRecords && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+            <h3 className="font-semibold text-gray-900 mb-3 text-sm">내 전체 기록</h3>
+            {myRecords.length === 0
+              ? <p className="text-sm text-gray-400 text-center py-4">기록이 없습니다.</p>
+              : (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {myRecords.map(r => (
+                    <div key={r.id} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0 text-sm">
+                      <div>
+                        <span className="font-medium text-gray-700">{r.gameName}</span>
+                        <span className="text-xs text-gray-400 ml-2">{r.durationSeconds}초</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-bold text-indigo-600">{r.score}점</span>
+                        <span className="text-xs text-gray-300 ml-2">
+                          {new Date(r.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            }
+          </div>
+        )}
 
         {/* 게임 선택 */}
         {phase === 'select' && (
