@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getPost, deletePost, likePost, addComment, deleteComment, likeComment } from '../api/board'
+import { getPost, deletePost, updatePost, likePost, addComment, deleteComment, likeComment } from '../api/board'
 import { getTemplates } from '../api/answers'
 import Layout from '../components/Layout'
 
@@ -20,6 +20,8 @@ export default function PostDetailPage() {
   const [templates, setTemplates] = useState([])
   const [commentInput, setCommentInput] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [editMode, setEditMode] = useState(false)
+  const [editForm, setEditForm] = useState(null)
 
   const load = async () => {
     try {
@@ -35,6 +37,18 @@ export default function PostDetailPage() {
 
   const handleLike = async () => {
     await likePost(problemId, postId)
+    load()
+  }
+
+  const openEdit = () => {
+    setEditForm({ title: post.title, content: post.content, category: post.category })
+    setEditMode(true)
+  }
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault()
+    await updatePost(problemId, postId, editForm)
+    setEditMode(false)
     load()
   }
 
@@ -95,13 +109,33 @@ export default function PostDetailPage() {
               <h2 className="text-lg font-bold text-gray-900">{post.title}</h2>
             </div>
             {isOwner && (
-              <button onClick={handleDelete} className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 shrink-0">
-                삭제
-              </button>
+              <div className="flex gap-2 shrink-0">
+                <button onClick={openEdit} className="text-xs text-indigo-400 hover:text-indigo-600 px-2 py-1 rounded hover:bg-indigo-50">수정</button>
+                <button onClick={handleDelete} className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50">삭제</button>
+              </div>
             )}
           </div>
 
-          <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{post.content}</p>
+          {editMode && editForm ? (
+            <form onSubmit={handleEditSubmit} className="space-y-3">
+              <select value={editForm.category} onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                {['SOLUTION','DISCUSSION','QUESTION','TIP'].map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <input required value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="제목" />
+              <textarea required rows={5} value={editForm.content} onChange={e => setEditForm(f => ({ ...f, content: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                placeholder="내용" />
+              <div className="flex gap-2">
+                <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg font-medium">저장</button>
+                <button type="button" onClick={() => setEditMode(false)} className="text-sm px-4 py-2 rounded-lg border border-gray-200 text-gray-500">취소</button>
+              </div>
+            </form>
+          ) : (
+            <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{post.content}</p>
+          )}
 
           {/* 정답 데이터 */}
           {post.answer && (

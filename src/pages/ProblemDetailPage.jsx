@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getProblem, deleteProblem, getProblemComments, addProblemComment, deleteProblemComment, toggleProblemLike, toggleProblemCommentLike } from '../api/problems'
+import { getProblem, deleteProblem, updateProblem, getProblemComments, addProblemComment, deleteProblemComment, toggleProblemLike, toggleProblemCommentLike } from '../api/problems'
 import { getPosts, createPost, likePost } from '../api/board'
 import { getTemplates, submitAnswer } from '../api/answers'
 import Layout from '../components/Layout'
@@ -31,6 +31,10 @@ export default function ProblemDetailPage() {
 
   // 힌트
   const [showHint, setShowHint] = useState(false)
+
+  // 문제 수정
+  const [editMode, setEditMode] = useState(false)
+  const [editForm, setEditForm] = useState(null)
 
   // 문제 댓글
   const [comments, setComments] = useState([])
@@ -94,6 +98,29 @@ export default function ProblemDetailPage() {
     loadAll()
   }
 
+  const openEdit = () => {
+    setEditForm({
+      title: problem.title,
+      description: problem.description || '',
+      hint: problem.hint || '',
+      realAnswer: '',
+      category: problem.category,
+      isPublic: problem.isPublic,
+      defaultTemplateId: problem.defaultTemplateId ? String(problem.defaultTemplateId) : '',
+    })
+    setEditMode(true)
+  }
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault()
+    await updateProblem(id, {
+      ...editForm,
+      defaultTemplateId: editForm.defaultTemplateId ? Number(editForm.defaultTemplateId) : null,
+    })
+    setEditMode(false)
+    loadAll()
+  }
+
   const handleLikeProblem = async () => {
     await toggleProblemLike(id)
     loadAll()
@@ -146,11 +173,47 @@ export default function ProblemDetailPage() {
             {problem.description && <p className="text-gray-500 text-sm">{problem.description}</p>}
           </div>
           {isOwner && (
-            <button onClick={handleDeleteProblem} className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 shrink-0">
-              삭제
-            </button>
+            <div className="flex gap-2 shrink-0">
+              <button onClick={openEdit} className="text-xs text-indigo-400 hover:text-indigo-600 px-2 py-1 rounded hover:bg-indigo-50">
+                수정
+              </button>
+              <button onClick={handleDeleteProblem} className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50">
+                삭제
+              </button>
+            </div>
           )}
         </div>
+
+        {/* 문제 수정 폼 */}
+        {editMode && editForm && (
+          <form onSubmit={handleEditSubmit} className="mt-4 border-t border-gray-50 pt-4 space-y-3">
+            <input required value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="제목" />
+            <textarea value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+              rows={3} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+              placeholder="설명 (선택)" />
+            <input value={editForm.hint} onChange={e => setEditForm(f => ({ ...f, hint: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="힌트 (선택)" />
+            <div className="flex gap-2">
+              <select value={editForm.category} onChange={e => setEditForm(f => ({ ...f, category: e.target.value }))}
+                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                {['DAILY','WORK','STUDY','CREATIVE','OTHER'].map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <label className="flex items-center gap-1.5 text-xs text-gray-600">
+                <input type="checkbox" checked={editForm.isPublic} onChange={e => setEditForm(f => ({ ...f, isPublic: e.target.checked }))} />
+                공개
+              </label>
+            </div>
+            <div className="flex gap-2">
+              <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg font-medium">저장</button>
+              <button type="button" onClick={() => setEditMode(false)} className="text-sm px-4 py-2 rounded-lg border border-gray-200 text-gray-500">취소</button>
+            </div>
+          </form>
+        )}
 
         {/* 힌트 */}
         {problem.hint && (
