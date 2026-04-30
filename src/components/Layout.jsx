@@ -73,6 +73,9 @@ export default function Layout({ children }) {
                 관리자
               </button>
             )}
+            <button onClick={() => navigate('/profile')} className="text-xs text-gray-400 hover:text-gray-600">
+              프로필
+            </button>
             <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-gray-600">
               로그아웃
             </button>

@@ -23,3 +23,6 @@ export const deleteComment = (problemId, postId, commentId) =>
 
 export const likeComment = (problemId, postId, commentId) =>
   client.post(`/api/v1/problems/${problemId}/posts/${postId}/comments/${commentId}/like`)
+
+export const updatePost = (problemId, postId, data) =>
+  client.put(`/api/v1/problems/${problemId}/posts/${postId}`, data)

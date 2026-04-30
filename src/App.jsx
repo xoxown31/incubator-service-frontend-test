@@ -8,6 +8,7 @@ import CommunityPage from './pages/CommunityPage'
 import MinigamePage from './pages/MinigamePage'
 import PostDetailPage from './pages/PostDetailPage'
 import NotificationsPage from './pages/NotificationsPage'
+import ProfilePage from './pages/ProfilePage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminUsersPage from './pages/admin/AdminUsersPage'
 import AdminProblemsPage from './pages/admin/AdminProblemsPage'
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/community" element={<PrivateRoute><CommunityPage /></PrivateRoute>} />
         <Route path="/minigame" element={<PrivateRoute><MinigamePage /></PrivateRoute>} />
         <Route path="/notifications" element={<PrivateRoute><NotificationsPage /></PrivateRoute>} />
+        <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
 
         {/* Admin */}
         <Route path="/admin"                  element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
