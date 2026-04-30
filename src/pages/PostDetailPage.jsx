@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getPost, deletePost, likePost, addComment } from '../api/board'
+import { getPost, deletePost, likePost, addComment, deleteComment, likeComment } from '../api/board'
 import { getTemplates } from '../api/answers'
 import Layout from '../components/Layout'
 
@@ -42,6 +42,16 @@ export default function PostDetailPage() {
     if (!confirm('게시글을 삭제하시겠습니까?')) return
     await deletePost(problemId, postId)
     navigate(-1)
+  }
+
+  const handleDeleteComment = async (commentId) => {
+    await deleteComment(problemId, postId, commentId)
+    load()
+  }
+
+  const handleLikeComment = async (commentId) => {
+    await likeComment(problemId, postId, commentId)
+    load()
   }
 
   const handleComment = async (e) => {
@@ -129,9 +139,27 @@ export default function PostDetailPage() {
           )}
 
           {(post.comments || []).map(c => (
-            <div key={c.id} className="py-2 border-b border-gray-50 last:border-0">
-              <span className="text-xs font-semibold text-gray-700 mr-2">{c.nickname}</span>
-              <span className="text-sm text-gray-600">{c.content}</span>
+            <div key={c.id} className="py-2 border-b border-gray-50 last:border-0 flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <span className="text-xs font-semibold text-gray-700 mr-2">{c.nickname}</span>
+                <span className="text-sm text-gray-600">{c.content}</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => handleLikeComment(c.id)}
+                  className={`text-xs font-medium transition-colors ${c.isLiked ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-600'}`}
+                >
+                  ♥ {c.likeCount ?? 0}
+                </button>
+                {c.userId === myUserId && (
+                  <button
+                    onClick={() => handleDeleteComment(c.id)}
+                    className="text-xs text-red-400 hover:text-red-600"
+                  >
+                    삭제
+                  </button>
+                )}
+              </div>
             </div>
           ))}
 
